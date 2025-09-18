@@ -15,6 +15,7 @@
 
 ## About The Project
 
+P/Invoke provides a set of marshaling capabilities for C-style APIs, but it does not support C++ Stream/APIs directly.
 
 ### Installation
 
@@ -29,3 +30,7 @@ Any Contributions are greatly appreciated! If you have a question, an issue or w
 ## License
 
 Distributed under the [MIT License](LICENSE)
+
+## References
+
+* https://github.com/dicomstudio/Cxx11Bindings
