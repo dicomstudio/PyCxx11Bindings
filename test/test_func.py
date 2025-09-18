@@ -1,9 +1,12 @@
-from cxx11bindings import increment
+from cxx11bindings import PyC11Stream
 
 
-def test_int():
-    assert increment(3) == 4
-
-
-def test_float():
-    assert increment(3.0) == 4.0
+def test_default():
+    filename = "default.bin"
+    try:
+        with open(filename, "wb") as f:
+            stream = PyC11Stream(f)
+            assert stream is not None
+    except Exception as e:
+        print("Error occurred: ", e)
+        assert False, "Failed to create PyC11Stream"
