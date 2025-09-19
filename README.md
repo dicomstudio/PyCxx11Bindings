@@ -28,6 +28,7 @@ This package is available on [PyPI](https://pypi.org/project/PyCxx11Bindings/). 
 In your Python code, you can now write something like:
 
 ```python
+from ctypes import *
 from cxx11bindings import *
 _acme_convert = _func(
     "acme_convert", c_bool, [POINTER(C11Stream), POINTER(C11Stream)]

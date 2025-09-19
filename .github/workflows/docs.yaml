@@ -2,10 +2,9 @@
 
 name: Generate documentation using pdoc and deploy as gh page.
 
-# build the documentation whenever there are new commits on main
+# build the documentation whenever there are new tags
 on:
   push:
-    branches:
     tags:
     - '*'
 
@@ -18,15 +17,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
+      with:
+        persist-credentials: false
     - uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.13'
 
       # Install all dependencies (including pdoc)
     - run: pip install -e .[docs]
     - run: pdoc -d numpy -o docs cxx11bindings
-    - uses: actions/upload-pages-artifact@v3
+    - uses: actions/upload-pages-artifact@v4
       with:
         path: docs/
 
