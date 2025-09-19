@@ -53,7 +53,7 @@ version_scheme = "pep440"
 [tool.ruff]
 indent-width = 4
 line-length = 88
-target-version = "py37"
+target-version = "py38"
 
 [tool.ruff.lint]
 select = ["I", "E", "F"]
