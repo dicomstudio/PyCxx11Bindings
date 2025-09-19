@@ -15,13 +15,36 @@
 
 ## About The Project
 
-P/Invoke provides a set of marshaling capabilities for C-style APIs, but it does not support C++ Stream/APIs directly.
+ctypes provides a set of marshaling capabilities for C-style APIs, but it does not support C++ Stream/APIs directly.
 
 ### Installation
 
 This package is available on [PyPI](https://pypi.org/project/PyCxx11Bindings/). You install it using pip:
 
     pip install PyCxx11Bindings
+
+## Usage
+
+In your Python code, you can now write something like:
+
+```python
+from cxx11bindings import *
+_acme_convert = _func(
+    "acme_convert", c_bool, [POINTER(C11Stream), POINTER(C11Stream)]
+)
+
+def acme_convert(instream, outstream):
+  with PyC11Stream(instream) as srcWrap:
+    with PyC11Stream(outstream) as dstWrap:
+      ret = _acme_convert(srcWrap, dstWrap)
+      if not ret:
+        raise ValueError(f"Fail to convert to ACME")
+
+if __name__ == "__main__":
+  in_file = open(sys.argv[1], "rb")
+  out_file = open(sys.argv[2], "wb")
+  acme_convert(in_file, out_file)
+```
 
 ## Contributing
 
@@ -34,3 +57,4 @@ Distributed under the [MIT License](LICENSE)
 ## References
 
 * https://github.com/dicomstudio/Cxx11Bindings
+* https://github.com/dicomstudio/Cxx11BindingsSharp
