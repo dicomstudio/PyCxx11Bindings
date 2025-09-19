@@ -13,5 +13,3 @@ Changelog
 
   * https://github.com/MArpogaus/minimal_python_project_skeleton
 - Initial commit. [Mathieu Malaterre]
-
-

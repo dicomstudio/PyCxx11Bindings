@@ -39,14 +39,14 @@ class C11Stream(ctypes.Structure):
 
 
 class PyC11Stream:
-    def __init__(self, file_like):
-        """doc."""
-        self._file_like = file_like
+    def __init__(self, stream):
+        """context manager to create a C11Stream from a python stream"""
+        self._inner_stream = stream
         self._c11_stream = C11Stream()
 
-        def py_buf_read(_, out_buffer, count):
+        def __py_read(_, out_buffer, count):
             try:
-                data = self._file_like.read(count)
+                data = self._inner_stream.read(count)
                 ctypes.memmove(out_buffer, data, len(data))
                 # short-read ok
                 return len(data)
@@ -54,44 +54,48 @@ class PyC11Stream:
                 print("Read error occurred: ", e)
                 return -1
 
-        def py_buf_write(_, in_buffer, count):
+        def __py_write(_, in_buffer, count):
             try:
                 data = ctypes.string_at(in_buffer, count)
-                self._file_like.write(data)
+                self._inner_stream.write(data)
                 return count
             except Exception as e:
                 print("Write error occurred: ", e)
                 return -1
 
-        def py_seek(_, offset, seek_dir):
+        def __py_seek(_, offset, seek_dir):
             try:
-                return self._file_like.seek(offset, seek_dir)
+                return self._inner_stream.seek(offset, seek_dir)
             except Exception as e:
                 print("Seek error occurred: ", e)
                 return -1
 
-        def py_flush(_):
+        def __py_flush(_):
             try:
-                self._file_like.flush()
+                self._inner_stream.flush()
                 return 0
             except Exception as e:
                 print("Flush error occurred: ", e)
                 return -1
 
-        def py_trunc(_, new_size):
+        def __py_trunc(_, new_size):
             try:
-                self._file_like.truncate(new_size)
+                self._inner_stream.truncate(new_size)
                 return new_size
             except Exception as e:
                 print("Trunc error occurred: ", e)
                 return -1
 
-        self._c11_stream.read = READ_CB(py_buf_read)
-        self._c11_stream.write = WRITE_CB(py_buf_write)
-        self._c11_stream.seek = SEEK_CB(py_seek)
-        self._c11_stream.flush = FLUSH_CB(py_flush)
-        self._c11_stream.trunc = TRUNC_CB(py_trunc)
+        self._c11_stream.read = READ_CB(__py_read)
+        self._c11_stream.write = WRITE_CB(__py_write)
+        self._c11_stream.seek = SEEK_CB(__py_seek)
+        self._c11_stream.flush = FLUSH_CB(__py_flush)
+        self._c11_stream.trunc = TRUNC_CB(__py_trunc)
 
-    def get_stream_ptr(self):
+    def __enter__(self):
         """return the internal stream pointer"""
         return ctypes.byref(self._c11_stream)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """flush is done directly by the inner stream"""
+        pass
