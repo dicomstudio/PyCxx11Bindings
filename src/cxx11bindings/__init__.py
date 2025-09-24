@@ -51,7 +51,7 @@ class ErrorCodes(Enum):
 
 EXCEPTION_CODE_MAP = {
     AttributeError: ErrorCodes.C11_E_POINTER,
-    NotImplementedError: ErrorCodes.C11_E_NOTSUPPORTED,
+    io.UnsupportedOperation: ErrorCodes.C11_E_NOTSUPPORTED,
     ValueError: ErrorCodes.C11_E_INVALIDARG,
     IndexError: ErrorCodes.C11_E_ARGUMENTOUTOFRANGE,
     RuntimeError: ErrorCodes.C11_E_OBJECTDISPOSED,
@@ -70,10 +70,10 @@ def exception_to_code(exc):
     return -1  # Unknown exception
 
 
-class PyC11Stream(io.IOBase):
+class PyC11Stream(io.RawIOBase):
     def __init__(self, stream):
         """dual personality stream.
-        context manager to create a C11Stream from a python streami
+        context manager to create a C11Stream from a python stream
         """
         self._inner_stream = stream
         self._c11_stream = C11Stream()
@@ -121,13 +121,13 @@ class PyC11Stream(io.IOBase):
         self._c11_stream.flush = FLUSH_CB(__py_flush)
         self._c11_stream.trunc = TRUNC_CB(__py_trunc)
 
-    def __enter__(self):
-        """return the internal stream pointer"""
+    @property
+    def ptr(self):
+        """Get a pointer to the underlying C11Stream structure."""
         return ctypes.byref(self._c11_stream)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """flush is done directly by the inner stream"""
-        pass
+        return self._inner_stream.__exit__(exc_type, exc_val, exc_tb)
 
     # Implementing IOBase methods to make PyC11Stream behave like a stream
 
@@ -145,6 +145,9 @@ class PyC11Stream(io.IOBase):
 
     def close(self):
         return self._inner_stream.close()
+
+    def truncate(self, size=None):
+        return self._inner_stream.truncate(size)
 
     def readable(self):
         return self._inner_stream.readable()

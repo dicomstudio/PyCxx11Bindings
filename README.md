@@ -37,7 +37,7 @@ _acme_convert = _func(
 def acme_convert(instream, outstream):
   with PyC11Stream(instream) as srcWrap:
     with PyC11Stream(outstream) as dstWrap:
-      ret = _acme_convert(srcWrap, dstWrap)
+      ret = _acme_convert(srcWrap.ptr, dstWrap.ptr)
       if not ret:
         raise ValueError(f"Fail to convert to ACME")
 
