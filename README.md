@@ -59,3 +59,4 @@ Distributed under the [MIT License](LICENSE)
 
 * https://github.com/dicomstudio/Cxx11Bindings
 * https://github.com/dicomstudio/Cxx11BindingsSharp
+* https://pypi.org/project/PyCxx11Bindings/
