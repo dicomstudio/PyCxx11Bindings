@@ -42,11 +42,11 @@ class C11Stream(ctypes.Structure):
 
 class ErrorCodes(Enum):
     C11_E_POINTER = -2147483648  # int32 negative value for 0x80000000
-    C11_E_NOTSUPPORTED = (auto(),)
-    C11_E_INVALIDARG = (auto(),)
-    C11_E_ARGUMENTOUTOFRANGE = (auto(),)
-    C11_E_OBJECTDISPOSED = (auto(),)
-    C11_E_IO = (auto(),)
+    C11_E_NOTSUPPORTED = auto()
+    C11_E_INVALIDARG = auto()
+    C11_E_ARGUMENTOUTOFRANGE = auto()
+    C11_E_OBJECTDISPOSED = auto()
+    C11_E_IO = auto()
 
 
 EXCEPTION_CODE_MAP = {
@@ -65,7 +65,7 @@ def exception_to_code(exc):
     """Map Python exception types to integer codes using a dictionary."""
     for exc_type, code in EXCEPTION_CODE_MAP.items():
         if isinstance(exc, exc_type):
-            return code
+            return code.value
     assert False
     return -1  # Unknown exception
 
