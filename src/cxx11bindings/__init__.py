@@ -126,7 +126,12 @@ class PyC11Stream(io.RawIOBase):
         """Get a pointer to the underlying C11Stream structure."""
         return ctypes.byref(self._c11_stream)
 
+    def __enter__(self):
+        """Context manager entry point."""
+        return self
+
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
         return self._inner_stream.__exit__(exc_type, exc_val, exc_tb)
 
     # Implementing IOBase methods to make PyC11Stream behave like a stream
