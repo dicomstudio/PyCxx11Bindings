@@ -12,7 +12,7 @@ classifiers = [
 ]
 dependencies = []
 dynamic = ["version"]
-license = {text = "MIT"}
+license = { text = "MIT" }
 name = "PyCxx11Bindings"
 readme = "README.md"
 requires-python = ">=3.8, <3.14"
