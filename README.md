@@ -10,53 +10,125 @@
 [![img](https://img.shields.io/pypi/v/PyCxx11Bindings.svg?style=flat-square)](https://pypi.org/project/PyCxx11Bindings)
 [![img](https://img.shields.io/pypi/pyversions/PyCxx11Bindings.svg?style=flat-square)](https://pypi.org/project/PyCxx11Bindings)
 
-
 # PyCxx11Bindings
 
-## About The Project
+PyCxx11Bindings adapts Python file-like objects to the C `c11_stream` interface
+using `ctypes`. This lets a native library written in C or C++ call Python
+streams without needing to expose C++ stream types across the language boundary.
 
-ctypes provides a set of marshaling capabilities for C-style APIs, but it does not support C++ Stream/APIs directly.
+The Python package provides the callback adapter; it does not include the
+native library that consumes the callbacks. That library must expose a C ABI
+function accepting a `struct c11_stream*`.
 
-### Installation
+## Installation
 
-This package is available on [PyPI](https://pypi.org/project/PyCxx11Bindings/). You install it using pip:
+Install the package from PyPI:
 
-    pip install PyCxx11Bindings
+```shell
+python -m pip install PyCxx11Bindings
+```
 
 ## Usage
 
-In your Python code, you can now write something like:
+Declare the native function with `ctypes`, wrap Python streams, and pass their
+`c11_stream` pointers to the native function:
 
 ```python
-from ctypes import *
-from cxx11bindings import *
-_acme_convert = _func(
-    "acme_convert", c_bool, [POINTER(C11Stream), POINTER(C11Stream)]
-)
+import ctypes
 
-def acme_convert(instream, outstream):
-  with PyC11Stream(instream) as srcWrap:
-    with PyC11Stream(outstream) as dstWrap:
-      ret = _acme_convert(srcWrap.ptr, dstWrap.ptr)
-      if not ret:
-        raise ValueError(f"Fail to convert to ACME")
+from cxx11bindings import C11Stream, PyC11Stream
 
-if __name__ == "__main__":
-  in_file = open(sys.argv[1], "rb")
-  out_file = open(sys.argv[2], "wb")
-  acme_convert(in_file, out_file)
+# Load your own native library, which must export acme_convert.
+native = ctypes.CDLL("path/to/libacme.so")
+convert = native.acme_convert
+convert.argtypes = [
+    ctypes.POINTER(C11Stream),
+    ctypes.POINTER(C11Stream),
+]
+convert.restype = ctypes.c_int
+
+with open("input.dat", "rb") as input_file, open("output.dat", "wb") as output_file:
+    input_stream = PyC11Stream(input_file)
+    output_stream = PyC11Stream(output_file)
+    result = convert(input_stream.ptr, output_stream.ptr)
+    if result != 0:
+        raise RuntimeError(f"Native conversion failed with code {result}")
+```
+
+On Windows, load a `.dll`; on macOS, load a `.dylib`. Use the path to the
+native library built for your platform and process architecture. The C
+declaration for the example function is:
+
+```c
+int acme_convert(struct c11_stream* input, struct c11_stream* output);
+```
+
+Include `cxx11bindings/stream.h` in the native project to use the interface.
+The callback table and stream wrapper must stay alive for the entire native
+call. The interface is synchronous: do not retain the pointer or access a
+callback's buffer after the call or callback returns. Calls may block, and
+thread safety is the responsibility of the application.
+
+`PyC11Stream` delegates read, write, seek, flush, and truncate operations to
+the wrapped Python object. Exceptions raised by those operations are converted
+to negative `C11_E_*` error codes for native code. An unknown exception maps
+to `C11_E_UNMAPPED`. Check the native function's documented return contract to
+determine how it reports callback failures.
+
+## Native interface
+
+The C ABI is defined by `c11_stream` in
+[`native/include/cxx11bindings/stream.h`](native/include/cxx11bindings/stream.h).
+It consists of five callbacks:
+
+| Callback | Success result |
+| --- | --- |
+| `read` | Number of bytes read; short reads are allowed |
+| `write` | Number of bytes written; short writes are allowed |
+| `seek` | New stream position |
+| `flush` | Zero |
+| `trunc` | New stream length |
+
+Callbacks return negative error codes on failure. The header defines the
+complete error-code list and callback signatures. C++ consumers can use the
+adapters in `native/include/cxx11bindings/streambuf.hxx`; the optional native
+shared library provides `FILE*` and `std::filebuf` implementations. Neither
+the shared library nor the C++ adapters are required to implement the
+interface from Python.
+
+## Build and test from source
+
+Building the native project requires CMake and C/C++ compilers. Initialize its
+Git submodule and build:
+
+```shell
+git submodule update --init --recursive
+cmake -S native -B build -DBUILD_TESTING=OFF
+cmake --build build --config Release
+```
+
+To build the native C++ unit tests too, install GoogleTest and configure with
+`-DBUILD_TESTING=ON`.
+
+Install the Python test dependencies and run the test suite:
+
+```shell
+python -m pip install -e ".[test]"
+python -m pytest
 ```
 
 ## Contributing
 
-Any Contributions are greatly appreciated! If you have a question, an issue or would like to contribute, please read our [contributing guidelines](CONTRIBUTING.md).
+Contributions and questions are welcome. Please read the
+[contributing guidelines](CONTRIBUTING.md) before opening an issue or pull
+request.
 
 ## License
 
-Distributed under the [MIT License](LICENSE)
+Distributed under the [MIT License](LICENSE).
 
-## References
+## Related projects
 
-* https://github.com/dicomstudio/Cxx11Bindings
-* https://github.com/dicomstudio/Cxx11BindingsSharp
-* https://pypi.org/project/PyCxx11Bindings/
+* [Cxx11Bindings](https://github.com/dicomstudio/Cxx11Bindings)
+* [Cxx11BindingsSharp](https://github.com/dicomstudio/Cxx11BindingsSharp)
+* [PyCxx11Bindings on PyPI](https://pypi.org/project/PyCxx11Bindings/)
