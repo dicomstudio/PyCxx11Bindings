@@ -103,6 +103,7 @@ class PyC11Stream(io.RawIOBase):
         """
         self._inner_stream = stream
         self._c11_stream = C11Stream()
+        self._closing = False
 
         def __py_read(_, out_buffer, count):
             try:
@@ -152,8 +153,11 @@ class PyC11Stream(io.RawIOBase):
         """Get a pointer to the underlying C11Stream structure."""
         return ctypes.byref(self._c11_stream)
 
+    def __enter__(self):
+        return super().__enter__()
+
     def __exit__(self, exc_type, exc_val, exc_tb):
-        return self._inner_stream.__exit__(exc_type, exc_val, exc_tb)
+        self.close()
 
     # Implementing IOBase methods to make PyC11Stream behave like a stream
 
@@ -167,10 +171,20 @@ class PyC11Stream(io.RawIOBase):
         return self._inner_stream.seek(offset, whence)
 
     def flush(self):
+        if self._closing:
+            return None
         return self._inner_stream.flush()
 
     def close(self):
-        return self._inner_stream.close()
+        if not self.closed:
+            self._closing = True
+            try:
+                self._inner_stream.close()
+            finally:
+                try:
+                    super().close()
+                finally:
+                    self._closing = False
 
     def truncate(self, size=None):
         return self._inner_stream.truncate(size)
