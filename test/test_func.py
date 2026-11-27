@@ -71,6 +71,48 @@ def test_py_c11_stream_methods_delegate_to_inner_stream():
 
     stream.close()
     assert inner_stream.closed
+    assert stream.closed
+
+
+def test_context_manager_closes_wrapper_and_inner_stream():
+    inner_stream = io.BytesIO(b"data")
+    stream = PyC11Stream(inner_stream)
+
+    with stream as entered_stream:
+        assert entered_stream is stream
+        assert not stream.closed
+
+    assert stream.closed
+    assert inner_stream.closed
+
+
+def test_context_manager_does_not_suppress_exceptions():
+    inner_stream = io.BytesIO()
+    stream = PyC11Stream(inner_stream)
+
+    try:
+        with stream:
+            raise RuntimeError("operation failed")
+    except RuntimeError as error:
+        assert str(error) == "operation failed"
+    else:
+        raise AssertionError("context manager suppressed the exception")
+
+    assert stream.closed
+    assert inner_stream.closed
+
+
+def test_context_manager_rejects_reentering_closed_stream():
+    stream = PyC11Stream(io.BytesIO())
+    stream.close()
+
+    try:
+        with stream:
+            pass
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("closed stream was allowed to re-enter")
 
 
 def test_default():
