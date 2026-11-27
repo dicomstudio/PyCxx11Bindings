@@ -1,6 +1,7 @@
 """.. include:: ../../README.md"""
 
 import ctypes
+import errno
 import io
 from enum import Enum, auto
 
@@ -47,6 +48,18 @@ class ErrorCodes(Enum):
     C11_E_ARGUMENTOUTOFRANGE = auto()
     C11_E_OBJECTDISPOSED = auto()
     C11_E_IO = auto()
+    C11_E_INVALIDOPERATION = auto()
+    C11_E_UNAUTHORIZED = auto()
+    C11_E_OUTOFMEMORY = auto()
+    C11_E_TIMEOUT = auto()
+    C11_E_CANCELED = auto()
+    C11_E_FILENOTFOUND = auto()
+    C11_E_DIRECTORYNOTFOUND = auto()
+    C11_E_PATHTOOLONG = auto()
+    C11_E_ENDOFSTREAM = auto()
+    C11_E_ARGUMENTNULL = auto()
+    C11_E_NOTIMPLEMENTED = auto()
+    C11_E_UNMAPPED = auto()
 
 
 EXCEPTION_CODE_MAP = {
@@ -54,7 +67,15 @@ EXCEPTION_CODE_MAP = {
     io.UnsupportedOperation: ErrorCodes.C11_E_NOTSUPPORTED,
     ValueError: ErrorCodes.C11_E_INVALIDARG,
     IndexError: ErrorCodes.C11_E_ARGUMENTOUTOFRANGE,
+    NotImplementedError: ErrorCodes.C11_E_NOTIMPLEMENTED,
     RuntimeError: ErrorCodes.C11_E_OBJECTDISPOSED,
+    PermissionError: ErrorCodes.C11_E_UNAUTHORIZED,
+    MemoryError: ErrorCodes.C11_E_OUTOFMEMORY,
+    TimeoutError: ErrorCodes.C11_E_TIMEOUT,
+    InterruptedError: ErrorCodes.C11_E_CANCELED,
+    FileNotFoundError: ErrorCodes.C11_E_FILENOTFOUND,
+    NotADirectoryError: ErrorCodes.C11_E_DIRECTORYNOTFOUND,
+    EOFError: ErrorCodes.C11_E_ENDOFSTREAM,
     IOError: ErrorCodes.C11_E_IO,
 }
 # Reverse mapping: ErrorCodes to Python exception types
@@ -63,11 +84,16 @@ CODE_EXCEPTION_MAP = {v: k for k, v in EXCEPTION_CODE_MAP.items()}
 
 def exception_to_code(exc):
     """Map Python exception types to integer codes using a dictionary."""
+    if isinstance(exc, OSError):
+        if exc.errno == errno.ENAMETOOLONG:
+            return ErrorCodes.C11_E_PATHTOOLONG.value
+        if exc.errno == errno.ENOTDIR:
+            return ErrorCodes.C11_E_DIRECTORYNOTFOUND.value
+
     for exc_type, code in EXCEPTION_CODE_MAP.items():
         if isinstance(exc, exc_type):
             return code.value
-    assert False
-    return -1  # Unknown exception
+    return ErrorCodes.C11_E_UNMAPPED.value
 
 
 class PyC11Stream(io.RawIOBase):
