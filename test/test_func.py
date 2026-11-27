@@ -1,8 +1,76 @@
 import ctypes
 import errno
+import io
 import os
 
 from cxx11bindings import ErrorCodes, PyC11Stream, exception_to_code
+
+
+def test_c11_callbacks_delegate_stream_operations():
+    inner_stream = io.BytesIO(b"abcdef")
+    stream = PyC11Stream(inner_stream)
+    callbacks = stream._c11_stream
+    read_buffer = (ctypes.c_uint8 * 3)()
+
+    assert callbacks.read(None, read_buffer, len(read_buffer)) == 3
+    assert bytes(read_buffer) == b"abc"
+    assert callbacks.seek(None, 1, io.SEEK_SET) == 1
+
+    data = b"XY"
+    write_buffer = (ctypes.c_uint8 * len(data)).from_buffer_copy(data)
+    assert callbacks.write(None, write_buffer, len(data)) == len(data)
+    assert callbacks.flush(None) == 0
+    assert callbacks.trunc(None, 4) == 4
+    assert inner_stream.getvalue() == b"aXYd"
+
+
+def test_c11_callbacks_translate_stream_exceptions():
+    class FailingStream:
+        def read(self, _):
+            raise TypeError("unexpected stream error")
+
+        def write(self, _):
+            raise io.UnsupportedOperation("write is not supported")
+
+        def seek(self, *_):
+            raise ValueError("invalid seek")
+
+        def flush(self):
+            raise OSError(errno.EIO, "flush failed")
+
+        def truncate(self, _):
+            raise PermissionError("truncate is not permitted")
+
+        def close(self):
+            pass
+
+    callbacks = PyC11Stream(FailingStream())._c11_stream
+    read_buffer = (ctypes.c_uint8 * 1)()
+    write_buffer = (ctypes.c_uint8 * 1)()
+
+    assert callbacks.read(None, read_buffer, 1) == ErrorCodes.C11_E_UNMAPPED.value
+    assert callbacks.write(None, write_buffer, 1) == ErrorCodes.C11_E_NOTSUPPORTED.value
+    assert callbacks.seek(None, 0, io.SEEK_SET) == ErrorCodes.C11_E_INVALIDARG.value
+    assert callbacks.flush(None) == ErrorCodes.C11_E_IO.value
+    assert callbacks.trunc(None, 1) == ErrorCodes.C11_E_UNAUTHORIZED.value
+
+
+def test_py_c11_stream_methods_delegate_to_inner_stream():
+    inner_stream = io.BytesIO(b"data")
+    stream = PyC11Stream(inner_stream)
+
+    assert stream.read(2) == b"da"
+    assert stream.seek(0) == 0
+    assert stream.write(b"XY") == 2
+    assert stream.truncate(2) == 2
+    assert inner_stream.getvalue() == b"XY"
+    assert stream.readable()
+    assert stream.writable()
+    assert stream.seekable()
+    assert stream.flush() is None
+
+    stream.close()
+    assert inner_stream.closed
 
 
 def test_default():
