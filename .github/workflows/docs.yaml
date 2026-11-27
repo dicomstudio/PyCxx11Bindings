@@ -2,11 +2,11 @@
 
 name: Generate documentation using pdoc and deploy as gh page.
 
-# build the documentation whenever there are new tags
+# build the documentation whenever a version tag is pushed
 on:
   push:
     tags:
-    - '*'
+    - v*
 
 # security: restrict permissions for CI jobs.
 permissions:
