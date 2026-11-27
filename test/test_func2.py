@@ -1,15 +1,33 @@
 import ctypes
 import os
+from pathlib import Path
 
 from cxx11bindings import C11Stream, ErrorCodes, PyC11Stream
 
-# Load the DLL (use the full path if not in the current directory)
+project_root = Path(__file__).resolve().parents[1]
 if os.name == "nt":
-    dll = ctypes.CDLL("./Cxx11BindingsTests.dll")
+    library_name = "Cxx11BindingsTests.dll"
+    library_paths = [
+        project_root / library_name,
+        project_root / "build" / "lib" / "Release" / library_name,
+    ]
 elif os.name == "posix":
-    dll = ctypes.CDLL("./Cxx11BindingsTests.so")
+    library_name = "Cxx11BindingsTests.so"
+    library_paths = [
+        project_root / library_name,
+        project_root / "build" / "lib" / library_name,
+    ]
 else:
     assert False, "Unsupported OS"
+
+library_path = next((path for path in library_paths if path.is_file()), None)
+if library_path is None:
+    searched_paths = ", ".join(str(path) for path in library_paths)
+    raise FileNotFoundError(
+        f"Could not find {library_name}; searched: {searched_paths}"
+    )
+
+dll = ctypes.CDLL(str(library_path))
 
 dll.test_c11_stream_write.argtypes = [
     ctypes.POINTER(C11Stream),
